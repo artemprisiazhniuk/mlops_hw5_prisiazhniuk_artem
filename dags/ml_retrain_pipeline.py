@@ -9,6 +9,7 @@ def train_model():
     print("Модель обучена")
 
 def evaluate_model() -> bool:
+    # Проверяем качество работы "модели"
     metric = float(os.getenv("METRIC", 0.9))
     ok = (metric > 0.85)
     
@@ -16,6 +17,7 @@ def evaluate_model() -> bool:
     return ok
 
 def choose_path(**_):
+    # в случае низкого качества, высылаем сообщение об ошибке и прекращаем пайплайн
     return "deploy_model" if evaluate_model() else "notify_fail"
 
 def deploy_model():
@@ -30,7 +32,7 @@ def notify_success():
     requests.get(f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={message}")
     
 def notify_fail():
-    MODEL_VERSION = os.getenv("MODEL_VERSION", "<placeholder>")
+    MODEL_VERSION = os.getenv("MODEL_VERSION", "")
     token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
     
@@ -55,6 +57,7 @@ with DAG(
     notify1 = PythonOperator(task_id="notify_success",python_callable=notify_success)
     notify2 = PythonOperator(task_id="notify_fail",python_callable=notify_fail)
 
+    # используем ветвление для случаев прохода порога и нет 
     train >> gate 
     gate >> deploy >> notify1
     gate >> notify2
